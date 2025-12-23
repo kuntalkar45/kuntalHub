@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuntal Hub | Premium Dashboard</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --accent: #10b981;
+            --danger: #f43f5e;
+            --bg: #030712;
+            --glass: rgba(17, 24, 39, 0.7);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+        
+        body { 
+            background: radial-gradient(circle at top left, #1e1b4b, #030712);
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+        /* Animations */
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes glow { 0% { box-shadow: 0 0 5px var(--primary); } 50% { box-shadow: 0 0 20px var(--primary); } 100% { box-shadow: 0 0 5px var(--primary); } }
+
+        /* Auth Screen */
+        #authBox { 
+            height: 80vh; display: flex; align-items: center; justify-content: center; 
+            animation: slideUp 0.6s ease-out;
+        }
+        .auth-card { 
+            background: var(--glass); backdrop-filter: blur(15px);
+            padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1);
+            width: 100%; max-width: 400px; text-align: center;
+        }
+
+        /* Dashboard Header */
+        header { 
+            text-align: center; padding: 40px 0; 
+            animation: slideUp 0.6s ease-out;
+        }
+        header img { width: 90px; border-radius: 50%; border: 3px solid var(--primary); padding: 3px; margin-bottom: 15px; }
+
+        /* Controls & Form */
+        .glass-panel {
+            background: var(--glass); backdrop-filter: blur(15px);
+            padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+
+        input {
+            width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px;
+            border: 1px solid #334155; background: #0f172a; color: white; outline: none;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(99, 102, 241, 0.3); }
+
+        .btn {
+            padding: 14px 20px; border-radius: 12px; border: none; font-weight: bold;
+            cursor: pointer; transition: 0.3s; display: inline-block; width: 100%;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #4f46e5; transform: scale(1.02); }
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 12px; background: #1f2937; text-align: center; cursor: pointer; border-radius: 12px; transition: 0.3s; }
+        .tab.active { background: var(--primary); color: white; font-weight: bold; }
+
+        /* Data Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card {
+            background: var(--glass); backdrop-filter: blur(10px);
+            padding: 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; overflow: hidden;
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        .card:hover { transform: translateY(-8px); border-color: var(--primary); background: rgba(30, 41, 59, 0.9); }
+        
+        .card-top { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .card-top img { width: 45px; height: 45px; border-radius: 10px; background: #fff; }
+        .card-info h4 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-info p { font-size: 12px; color: #94a3b8; }
+
+        .card-actions { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
+        .action-btn { flex: 1; text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; color: #cbd5e1; text-decoration: none; }
+        .edit-btn:hover { color: #fbbf24; }
+        .del-btn:hover { color: var(--danger); }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="authBox">
+        <div class="auth-card">
+            <h2 style="margin-bottom:10px;">Welcome to Kuntal Hub</h2>
+            <p style="color:#94a3b8; font-size:14px; margin-bottom:20px;">Manage your digital assets in the cloud</p>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="pass" placeholder="Password">
+            <button class="btn btn-primary" onclick="handleAuth('login')">Sign In</button>
+            <p style="margin-top:15px; font-size:13px; color:#64748b;">New here? <span onclick="handleAuth('reg')" style="color:var(--primary); cursor:pointer;">Create account</span></p>
+        </div>
+    </div>
+
+    <div id="dashBox" class="hidden">
+        <header>
+            <img src="https://avatars.githubusercontent.com/u/207206439?v=4" alt="Profile">
+            <h1 id="welcomeText">Cloud Dashboard</h1>
+            <p id="userEmail" style="opacity: 0.5; font-size: 14px;"></p>
+        </header>
+
+        <div class="tabs">
+            <div id="tabWeb" class="tab active" onclick="changeTab('web')">Websites</div>
+            <div id="tabApp" class="tab" onclick="changeTab('app')">Apps</div>
+        </div>
+
+        <div class="glass-panel">
+            <h3 style="margin-bottom:15px;">Add New Shortcut</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="itemName" style="flex: 1; min-width: 200px;" placeholder="Name (e.g. My Website)">
+                <input type="url" id="itemUrl" style="flex: 2; min-width: 200px;" placeholder="URL (https://...)">
+            </div>
+            <button class="btn btn-primary" onclick="saveData()">Save to Cloud</button>
+        </div>
+
+        <div id="mainGrid" class="grid"></div>
+
+        <button onclick="firebase.auth().signOut()" class="btn" style="background:transparent; color:var(--danger); border:1px solid var(--danger); margin-top:50px; margin-bottom:30px;">Secure Logout</button>
+    </div>
+</div>
+
+<script>
+/* 🔥 Firebase Config */
+const firebaseConfig = {
+    apiKey: "AIzaSyBGzXyisXGDWgmUGD7LmUb8OOGmYvCW50s",
+    authDomain: "kuntal-hub.firebaseapp.com",
+    projectId: "kuntal-hub",
+    storageBucket: "kuntal-hub.firebasestorage.app",
+    messagingSenderId: "864709240480",
+    appId: "1:864709240480:web:bb9f69bfa1589288a30bc5"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentTab = 'web';
+let currentUser = null;
+
+/* 🔐 Auth Logic */
+function handleAuth(mode) {
+    const e = document.getElementById('email').value, p = document.getElementById('pass').value;
+    if(!e || !p) return alert("Enter credentials");
+    if(mode==='login') auth.signInWithEmailAndPassword(e,p).catch(err => alert(err.message));
+    else auth.createUserWithEmailAndPassword(e,p).catch(err => alert(err.message));
+}
+
+auth.onAuthStateChanged(user => {
+    if(user) {
+        currentUser = user;
+        document.getElementById('userEmail').innerText = user.email;
+        document.getElementById('authBox').classList.add('hidden');
+        document.getElementById('dashBox').classList.remove('hidden');
+        loadData();
+    } else {
+        document.getElementById('authBox').classList.remove('hidden');
+        document.getElementById('dashBox').classList.add('hidden');
+    }
+});
+
+/* 📁 Data CRUD */
+function changeTab(t) {
+    currentTab = t;
+    document.getElementById('tabWeb').classList.toggle('active', t==='web');
+    document.getElementById('tabApp').classList.toggle('active', t==='app');
+    loadData();
+}
+
+async function saveData() {
+    const name = document.getElementById('itemName').value;
+    const url = document.getElementById('itemUrl').value;
+    if(!name || !url) return alert("Fill all fields");
+
+    await db.collection("userdata").add({
+        uid: currentUser.uid,
+        name, url,
+        type: currentTab,
+        time: Date.now()
+    });
+    document.getElementById('itemName').value = "";
+    document.getElementById('itemUrl').value = "";
+}
+
+function loadData() {
+    if(!currentUser) return;
+    
+    // NOTE: If you see NO DATA, check browser console for the Index Creation Link!
+    db.collection("userdata")
+    .where("uid", "==", currentUser.uid)
+    .where("type", "==", currentTab)
+    .orderBy("time", "desc")
+    .onSnapshot(snap => {
+        const grid = document.getElementById('mainGrid');
+        grid.innerHTML = "";
+        snap.forEach(doc => {
+            const data = doc.data();
+            const favicon = `https://www.google.com/s2/favicons?domain=${data.url}&sz=64`;
+            
+            grid.innerHTML += `
+                <div class="card">
+                    <div class="card-top">
+                        <img src="${favicon}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1243/1243933.png'">
+                        <div class="card-info">
+                            <h4>${data.name}</h4>
+                            <p>${data.url}</p>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <a href="${data.url}" target="_blank" class="action-btn" style="color:var(--primary)">Open</a>
+                        <span class="action-btn edit-btn" onclick="editItem('${doc.id}', '${data.name}', '${data.url}')">Edit</span>
+                        <span class="action-btn del-btn" onclick="deleteItem('${doc.id}')">Delete</span>
+                    </div>
+                </div>`;
+        });
+    });
+}
+
+async function editItem(id, oldName, oldUrl) {
+    const newName = prompt("Update Name:", oldName);
+    const newUrl = prompt("Update URL:", oldUrl);
+    
+    if(newName && newUrl) {
+        await db.collection("userdata").doc(id).update({
+            name: newName,
+            url: newUrl
+        });
+    }
+}
+
+async function deleteItem(id) {
+    if(confirm("Permanently delete this from cloud?")) {
+        await db.collection("userdata").doc(id).delete();
+    }
+}
+</script>
+</body>
+</html>
